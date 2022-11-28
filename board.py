@@ -1,4 +1,5 @@
 import numpy as np
+import time
 
 
 class Game:
@@ -19,8 +20,8 @@ class Game:
         possible_states.sort()
         return possible_states
 
-    def max(self, auto=False):
-        bestMove = self.find_best_max_move()
+    def max(self, auto=False, pruned=False):
+        bestMove = self.find_best_max_move(pruned)
         print("The Optimal Move is :", bestMove)
         if auto:
             self.p1.append(bestMove)
@@ -35,8 +36,8 @@ class Game:
             self.p1.append((x, y))
             self.occupied_cells.append((x, y))
 
-    def min(self, auto=False):
-        bestMove = self.find_best_min_move()
+    def min(self, auto=False, pruned=False):
+        bestMove = self.find_best_min_move(pruned)
         print("The Optimal Move is :", bestMove)
         if auto:
             self.p2.append(bestMove)
@@ -86,8 +87,8 @@ class Game:
 
     def is_terminal(self):
         cells = [(x, y) for x in range(1, self.m + 1) for y in range(1, self.n + 1)]
-        left_diag = []
-        right_diag = []
+        left_diagonal = []
+        right_diagonal = []
         rows = []
         columns = []
 
@@ -99,12 +100,12 @@ class Game:
 
         for cell in to_check:
             x, y = cell
-            diag = [(x, y)]
+            diagonal = [(x, y)]
             while x < self.m and y > 1:
                 x += 1
                 y -= 1
-                diag.append((x, y))
-            right_diag.append(diag)
+                diagonal.append((x, y))
+            right_diagonal.append(diagonal)
 
         to_check = []
         for cell in cells:
@@ -114,12 +115,12 @@ class Game:
 
         for cell in to_check:
             x, y = cell
-            diag = [(x, y)]
+            diagonal = [(x, y)]
             while x < self.m and y < self.m:
                 x += 1
                 y += 1
-                diag.append((x, y))
-            left_diag.append(diag)
+                diagonal.append((x, y))
+            left_diagonal.append(diagonal)
 
         for x in range(self.m):
             row = []
@@ -133,7 +134,7 @@ class Game:
                 column.append((x + 1, y + 1))
             columns.append(column)
 
-        total = right_diag + left_diag + rows + columns
+        total = right_diagonal + left_diagonal + rows + columns
 
         for each_list in total:
             if len(set(self.p1).intersection(set(each_list))) == self.k:
@@ -142,78 +143,125 @@ class Game:
                 return -10
 
         if len(self.cells) == len(self.occupied_cells):
-            return False
+            return True
+        return False
 
-    def find_best_max_move(self):
-        bestScore = float('-inf')
-        bestMove = None
-        for state in self.get_possible_states(self.cells, self.occupied_cells):
-            self.p1.append(state)
-            self.occupied_cells.append(state)
-            score = self.minimax(0, False)
-            self.p1.remove(state)
-            self.occupied_cells.remove(state)
-            if (score > bestScore):
-                bestScore = score
-                bestMove = state
+    def find_best_max_move(self, pruned=False):
+        start = time.time()
+        if pruned:
+            m, bestMove = board.pruned_minimax(True, float('-inf'), float('inf'))
+        else:
+            m, bestMove = board.minimax(True)
+        end = time.time()
+        print('Evaluation time: {}s'.format(round(end - start, 7)))
+        print('Recommended move:', bestMove)
         return bestMove
 
-    def find_best_min_move(self):
-        bestScore = float('inf')
-        bestMove = None
-        for state in self.get_possible_states(self.cells, self.occupied_cells):
-            self.p2.append(state)
-            self.occupied_cells.append(state)
-            score = self.minimax(0, True)
-            self.p2.remove(state)
-            self.occupied_cells.remove(state)
-            if (score < bestScore):
-                bestScore = score
-                bestMove = state
+    def find_best_min_move(self, pruned=False):
+        start = time.time()
+        if pruned:
+            m, bestMove = board.pruned_minimax(False, float('-inf'), float('inf'))
+        else:
+            m, bestMove = board.minimax(False)
+        end = time.time()
+        print('Evaluation time: {}s'.format(round(end - start, 7)))
+        print('Recommended move:', bestMove)
         return bestMove
 
-    def minimax(self, depth, is_max):
+    def minimax(self, is_max):
         score = self.is_terminal()
 
         if score == 10:
-            return score
+            return score, 0
 
         if score == -10:
-            return score
+            return score, 0
 
         if len(self.get_possible_states(self.cells, self.occupied_cells)) == 0:
-            return 0
+            return 0, 0
 
         if is_max:
-            value = float('-inf')
+            bestScore = float('-inf')
             for state in self.get_possible_states(self.cells, self.occupied_cells):
                 self.p1.append(state)
                 self.occupied_cells.append(state)
-                value = max(value, self.minimax(depth + 1, not is_max))
+                score, position = self.minimax(not is_max)
+                if score > bestScore:
+                    bestScore = score
+                    bestMove = state
                 self.p1.remove(state)
                 self.occupied_cells.remove(state)
-            return value
+            return bestScore, bestMove
 
         else:
-            value = float('inf')
+            bestScore = float('inf')
             for state in self.get_possible_states(self.cells, self.occupied_cells):
                 self.p2.append(state)
                 self.occupied_cells.append(state)
-                value = min(value, self.minimax(depth + 1, not is_max))
+                score, position = self.minimax(not is_max)
+                if score < bestScore:
+                    bestScore = score
+                    bestMove = state
                 self.p2.remove(state)
                 self.occupied_cells.remove(state)
-            return value
+            return bestScore, bestMove
+
+    def pruned_minimax(self, is_max, alpha, beta):
+        score = self.is_terminal()
+
+        if score == 10:
+            return score, 0
+
+        if score == -10:
+            return score, 0
+
+        if len(self.get_possible_states(self.cells, self.occupied_cells)) == 0:
+            return 0, 0
+
+        if is_max:
+            bestScore = float('-inf')
+            for state in self.get_possible_states(self.cells, self.occupied_cells):
+                self.p1.append(state)
+                self.occupied_cells.append(state)
+                score, position = self.pruned_minimax(not is_max, alpha, beta)
+                if score > bestScore:
+                    bestScore = score
+                    bestMove = state
+                self.p1.remove(state)
+                self.occupied_cells.remove(state)
+                if bestScore >= beta:
+                    return bestScore, bestMove
+                if bestScore > alpha:
+                    alpha = bestScore
+            return bestScore, bestMove
+
+        else:
+            bestScore = float('inf')
+            for state in self.get_possible_states(self.cells, self.occupied_cells):
+                self.p2.append(state)
+                self.occupied_cells.append(state)
+                score, position = self.pruned_minimax(not is_max, alpha, beta)
+                if score < bestScore:
+                    bestScore = score
+                    bestMove = state
+                self.p2.remove(state)
+                self.occupied_cells.remove(state)
+                if bestScore <= alpha:
+                    return bestScore, bestMove
+                if bestScore < beta:
+                    beta = bestScore
+
+            return bestScore, bestMove
 
 
 if __name__ == '__main__':
 
-    board = Game(3, 3, 3)
+    board = Game(4, 4, 4)
 
     while not board.is_terminal():
-        board.max(auto=True)
+        board.max(auto=True, pruned=True)
         board.drawboard()
         if board.is_terminal():
             break
-        board.min(auto=True)
+        board.min(auto=True, pruned=True)
         board.drawboard()
-
