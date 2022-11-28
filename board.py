@@ -1,6 +1,7 @@
 import numpy as np
 import time
 
+
 class Game:
     def __init__(self, m, n, k):
         self.m = m
@@ -97,13 +98,16 @@ class Game:
 
         for cell in to_check:
             x, y = cell
-            diagonal = set()
-            diagonal.add((x, y))
+            diagonal = [(x, y)]
             while x < self.m and y > 1:
                 x += 1
                 y -= 1
-                diagonal.add((x, y))
-            right_diagonal.append(diagonal)
+                diagonal.append((x, y))
+            if len(diagonal) == self.k:
+                right_diagonal.append(set(diagonal))
+            if len(diagonal) > self.k:
+                for i in range(len(diagonal) % self.k + 1):
+                    right_diagonal.append(set(diagonal[i:self.k + i]))
 
         to_check = []
         for cell in self.cells:
@@ -113,38 +117,51 @@ class Game:
 
         for cell in to_check:
             x, y = cell
-            diagonal = set()
-            diagonal.add((x, y))
-            while x < self.m and y < self.m:
+            diagonal = [(x, y)]
+            while x < self.m and y < self.n:
                 x += 1
                 y += 1
-                diagonal.add((x, y))
-            left_diagonal.append(diagonal)
+                diagonal.append((x, y))
+            if len(diagonal) == self.k:
+                left_diagonal.append(set(diagonal))
+            if len(diagonal) > self.k:
+                for i in range(len(diagonal) % self.k + 1):
+                    left_diagonal.append(set(diagonal[i:self.k + i]))
 
         for x in range(self.m):
-            row = set()
+            row = []
             for y in range(self.n):
-                row.add((x + 1, y + 1))
-            rows.append(row)
+                row.append((x + 1, y + 1))
+            for i in range(self.n % self.k + 1):
+                rows.append(set(row[i:self.k + i]))
 
         for y in range(self.n):
-            column = set()
+            column = []
             for x in range(self.m):
-                column.add((x + 1, y + 1))
-            columns.append(column)
+                column.append((x + 1, y + 1))
+            for i in range(self.m % self.k + 1):
+                columns.append(set(column[i:self.k + i]))
 
         return right_diagonal + left_diagonal + rows + columns
 
-    def is_terminal(self):
+    def get_score(self):
         for each_list in self.possible_victories:
             if len(self.p1.intersection(each_list)) == self.k:
                 return 10
             if len(self.p2.intersection(each_list)) == self.k:
                 return -10
+            else:
+                return 0
 
-        if len(self.cells) == len(self.occupied_cells):
-            return True
-        return False
+    def is_terminal(self):
+        for each_list in self.possible_victories:
+            if len(self.p1.intersection(each_list)) == self.k:
+                return 'Player 1 (O) wins', True
+            elif len(self.p2.intersection(each_list)) == self.k:
+                return 'Player 2 (X) wins', True
+            elif len(self.cells) == len(self.occupied_cells):
+                return 'It is a draw', True
+        return '', False
 
     def find_best_max_move(self, pruned=False):
         start = time.time()
@@ -169,7 +186,7 @@ class Game:
         return bestMove
 
     def minimax(self, is_max):
-        score = self.is_terminal()
+        score = self.get_score()
 
         if score == 10:
             return score, 0
@@ -207,7 +224,7 @@ class Game:
             return bestScore, bestMove
 
     def pruned_minimax(self, is_max, alpha, beta):
-        score = self.is_terminal()
+        score = self.get_score()
 
         if score == 10:
             return score, 0
@@ -258,10 +275,16 @@ if __name__ == '__main__':
 
     board = Game(3, 3, 3)
 
-    while not board.is_terminal():
+    while True:
         board.max(auto=True, pruned=True)
         board.drawboard()
-        if board.is_terminal():
+        winner, end = board.is_terminal()
+        if end:
+            print(winner)
             break
-        board.min(auto=False, pruned=True)
+        board.min(auto=True, pruned=True)
         board.drawboard()
+        winner, end = board.is_terminal()
+        if end:
+            print(winner)
+            break
