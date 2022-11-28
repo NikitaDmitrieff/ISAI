@@ -1,31 +1,29 @@
 import numpy as np
 import time
 
-
 class Game:
     def __init__(self, m, n, k):
         self.m = m
         self.n = n
-        self.p1 = []
-        self.p2 = []
         self.k = k
-        self.occupied_cells = []
-        self.cells = [(x, y) for x in range(1, self.m + 1) for y in range(1, self.n + 1)]
+        self.p1 = set()
+        self.p2 = set()
+        self.occupied_cells = set()
+        self.cells = set([(x, y) for x in range(1, self.m + 1) for y in range(1, self.n + 1)])
+        self.possible_victories = (self.get_possible_victories())
 
     def initialize_game(self):
         return self.m, self.n
 
     def get_possible_states(self, available_cells, occupied_cells):
-        possible_states = list(set(available_cells) - set(occupied_cells))
-        possible_states.sort()
-        return possible_states
+        return set(available_cells) - set(occupied_cells)
 
     def max(self, auto=False, pruned=False):
         bestMove = self.find_best_max_move(pruned)
         print("The Optimal Move is :", bestMove)
         if auto:
-            self.p1.append(bestMove)
-            self.occupied_cells.append(bestMove)
+            self.p1.add(bestMove)
+            self.occupied_cells.add(bestMove)
         else:
             x = int(input('P1, Please input row number'))
             y = int(input('P1, Please input column number'))
@@ -33,15 +31,15 @@ class Game:
                 print('Invalid')
                 x = int(input('P1, Please input row number'))
                 y = int(input('P1, Please input column number'))
-            self.p1.append((x, y))
-            self.occupied_cells.append((x, y))
+            self.p1.add((x, y))
+            self.occupied_cells.add((x, y))
 
     def min(self, auto=False, pruned=False):
         bestMove = self.find_best_min_move(pruned)
         print("The Optimal Move is :", bestMove)
         if auto:
-            self.p2.append(bestMove)
-            self.occupied_cells.append(bestMove)
+            self.p2.add(bestMove)
+            self.occupied_cells.add(bestMove)
         else:
             x = int(input('P2, Please input row number'))
             y = int(input('P2, Please input column number'))
@@ -49,8 +47,8 @@ class Game:
                 print('Invalid')
                 x = int(input('P2, Please input row number'))
                 y = int(input('P2, Please input column number'))
-            self.p2.append((x, y))
-            self.occupied_cells.append((x, y))
+            self.p2.add((x, y))
+            self.occupied_cells.add((x, y))
 
     def drawboard(self):
         x_dim, y_dim = self.initialize_game()
@@ -85,61 +83,63 @@ class Game:
             return True
         return False
 
-    def is_terminal(self):
-        cells = [(x, y) for x in range(1, self.m + 1) for y in range(1, self.n + 1)]
+    def get_possible_victories(self):
         left_diagonal = []
         right_diagonal = []
         rows = []
         columns = []
 
-        to_check = []
-        for cell in cells:
+        to_check = set()
+        for cell in self.cells:
             x, y = cell
             if (x == 1) or (y == self.n):
-                to_check.append(cell)
+                to_check.add(cell)
 
         for cell in to_check:
             x, y = cell
-            diagonal = [(x, y)]
+            diagonal = set()
+            diagonal.add((x, y))
             while x < self.m and y > 1:
                 x += 1
                 y -= 1
-                diagonal.append((x, y))
+                diagonal.add((x, y))
             right_diagonal.append(diagonal)
 
         to_check = []
-        for cell in cells:
+        for cell in self.cells:
             x, y = cell
             if (x == 1) or (y == 1):
                 to_check.append(cell)
 
         for cell in to_check:
             x, y = cell
-            diagonal = [(x, y)]
+            diagonal = set()
+            diagonal.add((x, y))
             while x < self.m and y < self.m:
                 x += 1
                 y += 1
-                diagonal.append((x, y))
+                diagonal.add((x, y))
             left_diagonal.append(diagonal)
 
         for x in range(self.m):
-            row = []
+            row = set()
             for y in range(self.n):
-                row.append((x + 1, y + 1))
+                row.add((x + 1, y + 1))
             rows.append(row)
 
         for y in range(self.n):
-            column = []
+            column = set()
             for x in range(self.m):
-                column.append((x + 1, y + 1))
+                column.add((x + 1, y + 1))
             columns.append(column)
 
-        total = right_diagonal + left_diagonal + rows + columns
+        return right_diagonal + left_diagonal + rows + columns
 
-        for each_list in total:
-            if len(set(self.p1).intersection(set(each_list))) == self.k:
+    def is_terminal(self):
+        for each_list in self.possible_victories:
+            if len(self.p1.intersection(each_list)) == self.k:
                 return 10
-            if len(set(self.p2).intersection(set(each_list))) == self.k:
+            if len(self.p2.intersection(each_list)) == self.k:
                 return -10
 
         if len(self.cells) == len(self.occupied_cells):
@@ -183,8 +183,8 @@ class Game:
         if is_max:
             bestScore = float('-inf')
             for state in self.get_possible_states(self.cells, self.occupied_cells):
-                self.p1.append(state)
-                self.occupied_cells.append(state)
+                self.p1.add(state)
+                self.occupied_cells.add(state)
                 score, position = self.minimax(not is_max)
                 if score > bestScore:
                     bestScore = score
@@ -196,8 +196,8 @@ class Game:
         else:
             bestScore = float('inf')
             for state in self.get_possible_states(self.cells, self.occupied_cells):
-                self.p2.append(state)
-                self.occupied_cells.append(state)
+                self.p2.add(state)
+                self.occupied_cells.add(state)
                 score, position = self.minimax(not is_max)
                 if score < bestScore:
                     bestScore = score
@@ -221,8 +221,8 @@ class Game:
         if is_max:
             bestScore = float('-inf')
             for state in self.get_possible_states(self.cells, self.occupied_cells):
-                self.p1.append(state)
-                self.occupied_cells.append(state)
+                self.p1.add(state)
+                self.occupied_cells.add(state)
                 score, position = self.pruned_minimax(not is_max, alpha, beta)
                 if score > bestScore:
                     bestScore = score
@@ -238,8 +238,8 @@ class Game:
         else:
             bestScore = float('inf')
             for state in self.get_possible_states(self.cells, self.occupied_cells):
-                self.p2.append(state)
-                self.occupied_cells.append(state)
+                self.p2.add(state)
+                self.occupied_cells.add(state)
                 score, position = self.pruned_minimax(not is_max, alpha, beta)
                 if score < bestScore:
                     bestScore = score
@@ -256,12 +256,12 @@ class Game:
 
 if __name__ == '__main__':
 
-    board = Game(4, 4, 4)
+    board = Game(3, 3, 3)
 
     while not board.is_terminal():
         board.max(auto=True, pruned=True)
         board.drawboard()
         if board.is_terminal():
             break
-        board.min(auto=True, pruned=True)
+        board.min(auto=False, pruned=True)
         board.drawboard()
