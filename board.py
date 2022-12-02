@@ -12,6 +12,7 @@ class Game:
         self.occupied_cells = set()
         self.cells = set([(x, y) for x in range(1, self.m + 1) for y in range(1, self.n + 1)])
         self.possible_victories = (self.get_possible_victories())
+        self.state_counter = 0
 
     def initialize_game(self):
         return self.m, self.n
@@ -186,6 +187,7 @@ class Game:
         return bestMove
 
     def minimax(self, is_max):
+        self.state_counter += 1
         score = self.get_score()
 
         if score == 10:
@@ -206,6 +208,7 @@ class Game:
                 if score > bestScore:
                     bestScore = score
                     bestMove = state
+
                 self.p1.remove(state)
                 self.occupied_cells.remove(state)
             return bestScore, bestMove
@@ -224,6 +227,7 @@ class Game:
             return bestScore, bestMove
 
     def pruned_minimax(self, is_max, alpha, beta):
+        self.state_counter += 1
         score = self.get_score()
 
         if score == 10:
@@ -276,14 +280,18 @@ if __name__ == '__main__':
     board = Game(3, 3, 3)
 
     while True:
-        board.max(auto=True, pruned=True)
-        board.drawboard()
+        board.state_counter = 0
+        board.max(auto=True, pruned=False)
+        # board.drawboard()
+        print(board.state_counter)
         winner, end = board.is_terminal()
         if end:
             print(winner)
             break
-        board.min(auto=True, pruned=True)
-        board.drawboard()
+        board.state_counter = 0
+        board.min(auto=True, pruned=False)
+        # board.drawboard()
+        print(board.state_counter)
         winner, end = board.is_terminal()
         if end:
             print(winner)
